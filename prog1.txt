@@ -1,0 +1,78 @@
+#Program 1 of CCN Manual
+
+#Creating new simulator
+set ns [new Simulator]
+#Opening trace file
+set tracefile [open prog1.tr w]
+#Attach tracing to trace file
+$ns trace-all $tracefile
+#Opening nam file
+set namfile [open prog1.nam w]
+#Attaching animated tracing to nam file
+$ns namtrace-all $namfile
+
+#Finish Procedure
+proc Finish {} {
+	#Global variables
+	global ns tracefile namfile
+	#Writing to tracefile
+	$ns flush-trace
+	#Closing trace file
+	close $tracefile
+	#Closing nam file
+	close $namfile
+	#Execute Network Animator
+	exec nam prog1.nam
+	exec echo "The number of packets dropped is: " &
+	#Getting packet drops
+	exec grep -c "^d" prog1.tr &
+	exit 0
+}
+
+#Creating three nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+
+#Connecting three nodes
+$ns duplex-link $n0 $n1 0.75Mb 10ms DropTail
+$ns duplex-link $n1 $n2 0.75Mb 10ms DropTail
+
+#Setting queue size
+$ns queue-limit $n0 $n1 10
+$ns queue-limit $n1 $n2 10
+
+#Creating transport layer agent UDP
+set udp [new Agent/UDP]
+#Attaching UDP agent to n0 node
+$ns attach-agent $n0 $udp
+
+#Creating NULL agent
+set null [new Agent/Null]
+#Attaching NULL agent to n2 node
+$ns attach-agent $n2 $null
+
+#Connecting the transport layers
+$ns connect $udp $null
+
+#Setting Constant Bit Rate application
+set cbr0 [new Application/Traffic/CBR]
+#Set as Constant bit rate
+$cbr0 set type_ CBR
+#Size of CBR data
+$cbr0 set packetSize_ 100
+#CBR output datarate
+$cbr0 set rate_ 1Mb
+#No randomness to datastream
+$cbr0 set random_ false
+#Attaching CBR application to UDP
+$cbr0 attach-agent $udp	
+
+#Scheduling of events
+#Start of CBR application
+$ns at 0.0 "$cbr0 start"
+#Finish simulation
+$ns at 5.0 "Finish"
+
+#Run simulation
+$ns run
